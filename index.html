@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Schach Tycoon (Fixed)</title>
+    <title>Schach Tycoon (Gratis Shop)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
@@ -16,7 +16,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <style>
-        /* ==================== ALTES DESIGN (TYCOON) ==================== */
+        /* ==================== DESIGN ==================== */
         :root {
             --bg: #121212;
             --panel: #1e272e;
@@ -40,7 +40,6 @@
 
         h1, h2, h3 { margin: 0; padding: 0; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); }
 
-        /* BUTTONS */
         button { 
             padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; 
             font-size: 1rem; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -60,7 +59,6 @@
         }
         input:focus { border-color: var(--accent); }
 
-        /* LAYOUTS */
         .centered-box { 
             width: 100%; max-width: 400px; padding: 30px; background: var(--panel); 
             border-radius: 12px; text-align: center; margin: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
@@ -103,11 +101,9 @@
         .msg { margin-bottom: 5px; }
         .msg b { color: var(--accent); }
 
-        /* MOVES HIGHLIGHT */
         .highlight { box-shadow: inset 0 0 0 4px var(--accent); }
         .dot { background: radial-gradient(rgba(46, 204, 113, 0.8) 20%, transparent 25%); cursor: pointer; }
 
-        /* MODAL */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
@@ -118,10 +114,7 @@
             border: 1px solid var(--accent); box-shadow: 0 0 50px rgba(0,0,0,0.8); width: 350px;
         }
 
-        /* PARTIKEL */
         .particle { position: absolute; width: 6px; height: 6px; border-radius: 50%; pointer-events: none; z-index: 100; }
-
-        /* RANK BADGE */
         .rank-badge { background: #333; padding: 5px 10px; border-radius: 15px; font-size: 0.8em; margin-top: 5px; display: inline-block; color: #fff; border: 1px solid #555; }
     </style>
 </head>
@@ -130,7 +123,7 @@
     <div id="screen-login" class="screen active">
         <div class="centered-box">
             <h1>Schach Tycoon</h1>
-            <p style="color:#777; margin-bottom:30px;">Klassisches Design. Moderne Features.</p>
+            <p style="color:#777; margin-bottom:30px;">Login & Play</p>
             
             <input type="text" id="reg-name" placeholder="Benutzername">
             <input type="email" id="reg-email" placeholder="E-Mail Adresse">
@@ -146,8 +139,13 @@
         <div class="main-layout">
             <div class="sidebar">
                 <div class="profile-card">
+                    <div style="color:var(--success); font-size:0.8em; margin-bottom:5px;">● Eingeloggt</div>
+                    
                     <div class="avatar"><i class="fas fa-chess-king"></i></div>
                     <h3 id="display-name">...</h3>
+                    
+                    <div id="display-email" style="font-size:0.8em; color:#888; margin-bottom:5px;">user@email.com</div>
+                    
                     <div class="rank-badge" id="display-rank">Bauer</div>
                     <div style="display:flex; justify-content:space-around; margin-top:15px; width:100%;">
                         <span>🏆 <b id="display-wins">0</b></span>
@@ -190,7 +188,7 @@
                 </div>
 
                 <div id="tab-shop" style="display:none;">
-                    <h2>Skin Shop</h2>
+                    <h2>Skin Shop (Alles Gratis!)</h2>
                     <p>Münzen: <b style="color:var(--accent)" id="shop-coins">0</b></p>
                     <div id="shop-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:15px; margin-top:20px;"></div>
                 </div>
@@ -255,14 +253,14 @@
         let roomId = '';
         let myColor = 'w';
         
+        // HIER: ALLES AUF KOSTENLOS GESETZT (Cost: 0)
         const SKINS = {
             'classic': { name:'Klassisch', cost:0, css:'skin-classic' },
-            'ocean': { name:'Ozean', cost:200, css:'skin-ocean' },
-            'ruby': { name:'Rubin', cost:500, css:'skin-ruby' },
-            'midnight': { name:'Mitternacht', cost:1000, css:'skin-midnight' }
+            'ocean': { name:'Ozean', cost:0, css:'skin-ocean' },
+            'ruby': { name:'Rubin', cost:0, css:'skin-ruby' },
+            'midnight': { name:'Mitternacht', cost:0, css:'skin-midnight' }
         };
 
-        // --- AUDIO ENGINE (Klassisch/Simple) ---
         const playTone = (freq, type, dur) => {
             let ctx = new (window.AudioContext || window.webkitAudioContext)();
             let osc = ctx.createOscillator();
@@ -278,15 +276,16 @@
         auth.onAuthStateChanged(u => {
             if(u) {
                 switchScreen('screen-lobby');
-                // Load User Data
+                // Daten laden
                 db.ref('users/'+u.uid).on('value', snap => {
                     userData = snap.val() || {};
+                    // UI UPDATES
                     $('#display-name').text(userData.username || "Spieler");
+                    $('#display-email').text(userData.email || u.email); // EMAIL ANZEIGEN
                     $('#display-wins').text(userData.wins || 0);
                     $('#display-coins').text(userData.coins || 0);
                     $('#shop-coins').text(userData.coins || 0);
                     
-                    // Rank Calc
                     let w = userData.wins || 0;
                     let r = "Bauer";
                     if(w > 5) r = "Springer";
@@ -310,6 +309,7 @@
             auth.createUserWithEmailAndPassword(e,p).then(cred => {
                 let safeEmail = e.replace(/\./g, ',');
                 let uid = cred.user.uid;
+                // Standardwerte setzen
                 let data = { username:n, email:e, wins:0, coins:0, skin:'classic', unlockedSkins:['classic'] };
                 
                 let updates = {};
@@ -335,7 +335,6 @@
             $('#chat-msgs').empty();
             $('#modal-gameover').hide();
             
-            // Apply Skin
             let s = userData.skin || 'classic';
             $('#board').removeClass().addClass(SKINS[s].css);
 
@@ -348,7 +347,6 @@
                 onSnapEnd: () => board.position(game.fen())
             });
 
-            // Klick Logic
             $('#board').off('click').on('click', '.square-55d63', handleSquareClick);
             updateStatus();
         }
@@ -395,7 +393,7 @@
                 
                 if(move.captured) {
                     playTone(150, 'sawtooth', 0.1);
-                    spawnParticles(to, move.color === 'w' ? '#000' : '#fff'); // Schwarz wird geschlagen -> schwarze Partikel
+                    spawnParticles(to, move.color === 'w' ? '#000' : '#fff');
                 } else playTone(300, 'sine', 0.1);
 
                 if(mode==='online') {
@@ -468,7 +466,6 @@
             $('#game-status').text(s);
         }
 
-        // --- START FUNCTIONS ---
         function startBotGame() {
             mode = 'bot';
             switchScreen('screen-game');
@@ -484,7 +481,6 @@
                 if(c==='black') board.orientation('black');
             }, 200);
 
-            // DB & Chat Listeners
             initChat(r);
             db.ref('games/'+r).off();
             db.ref('games/'+r).on('value', snap => {
@@ -507,7 +503,6 @@
         }
         function closeModal() { $('#modal-gameover').hide(); quitGame(); }
 
-        // --- CHAT & SOCIAL ---
         function initChat(r) {
             $('#chat-msgs').empty();
             db.ref('chats/'+r).off();
@@ -553,17 +548,19 @@
             });
         }
 
-        // --- SHOP ---
+        // --- SHOP (GRATIS VERSION) ---
         function renderShop() {
             let grid = $('#shop-grid'); grid.empty();
+            let unlocked = userData.unlockedSkins || ['classic'];
             Object.keys(SKINS).forEach(k => {
                 let s = SKINS[k];
-                let owned = userData.unlockedSkins.includes(k);
-                let active = userData.skin === k;
+                let isOwned = unlocked.includes(k);
+                let isActive = userData.skin === k;
                 let btn = '';
-                if(active) btn = `<button class="btn-green" disabled>Aktiv</button>`;
-                else if(owned) btn = `<button class="btn-dark" onclick="equipSkin('${k}')">Wählen</button>`;
-                else btn = `<button class="btn-gold" onclick="buySkin('${k}')">Kaufen ${s.cost}</button>`;
+                
+                if(isActive) btn = `<button class="btn-green" disabled>Aktiv</button>`;
+                else if(isOwned) btn = `<button class="btn-dark" onclick="equipSkin('${k}')">Wählen</button>`;
+                else btn = `<button class="btn-gold" onclick="buySkin('${k}')">Gratis Kaufen</button>`; // TEXT ANPASSUNG
                 
                 grid.append(`<div style="background:var(--panel); padding:15px; border-radius:6px; border:1px solid #333;">
                     <div class="${s.css}" style="height:50px; margin-bottom:10px;"></div>
@@ -571,24 +568,26 @@
                 </div>`);
             });
         }
+        
         function buySkin(k) {
-            let cost = SKINS[k].cost;
-            if(userData.coins >= cost) {
-                if(confirm("Kaufen?")) {
-                    let uid = auth.currentUser.uid;
-                    let newSkins = [...userData.unlockedSkins, k];
-                    db.ref('users/'+uid).update({ coins: userData.coins - cost, unlockedSkins: newSkins, skin: k });
-                }
-            } else alert("Zu wenig Münzen!");
+            let uid = auth.currentUser.uid;
+            let currentSkins = userData.unlockedSkins || ['classic'];
+            
+            // Wenn der Skin noch nicht dabei ist, hinzufügen
+            if(!currentSkins.includes(k)) {
+                let newSkins = [...currentSkins, k];
+                // Wir ziehen KEINE Münzen ab (Cost egal), wir updaten nur die Liste
+                db.ref('users/'+uid).update({ unlockedSkins: newSkins, skin: k });
+                alert("Skin gekauft (0 Münzen)!");
+            }
         }
+        
         function equipSkin(k) { db.ref('users/'+auth.currentUser.uid).update({skin:k}); }
 
-        // --- PARTIKEL ---
         function spawnParticles(sq, color) {
             let $el = $(`.square-${sq}`);
             if(!$el.length) return;
             let pos = $el.offset();
-            // Container relative adjustment if needed, using absolute for simplicity
             for(let i=0; i<15; i++) {
                 let p = $('<div class="particle"></div>').css({
                     background: color, left: pos.left+30, top: pos.top+30
