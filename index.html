@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Mein Schach Server</title>
+    <title>Schach + Analyse</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
@@ -15,170 +15,157 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #212121; color: #ecf0f1; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #212121; color: #ecf0f1; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         h1 { color: #f1c40f; margin-bottom: 5px; }
         
-        /* Container für die verschiedenen Bildschirme */
-        .screen { width: 90%; max-width: 500px; padding: 20px; background: #2c3e50; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); margin-top: 20px; display: none; }
-        .active { display: block; } /* Nur der aktive Screen wird angezeigt */
+        .screen { width: 90%; max-width: 500px; padding: 20px; background: #2c3e50; border-radius: 10px; margin-top: 20px; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .active { display: block; } 
 
-        /* Inputs & Buttons */
         input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; font-size: 16px; }
-        button { padding: 12px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; width: 100%; }
+        button { padding: 12px 20px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
         .btn-green { background: #27ae60; color: white; } 
         .btn-blue { background: #2980b9; color: white; }
         .btn-red { background: #c0392b; color: white; }
-        button:hover { opacity: 0.9; transform: scale(1.02); }
 
         /* Schachbrett */
         #board { width: 100%; margin: 15px 0; }
         
-        /* Infos */
-        .status-box { background: #34495e; padding: 10px; border-radius: 5px; margin-top: 10px; }
-        #error-msg { color: #e74c3c; font-weight: bold; min-height: 20px; }
-        .user-display { font-size: 0.9em; color: #bdc3c7; margin-bottom: 15px; border-bottom: 1px solid #7f8c8d; padding-bottom: 10px; }
+        /* Analyse Box */
+        .analysis-bar { margin-top: 15px; padding: 15px; border-radius: 8px; background: #34495e; font-weight: bold; transition: background 0.3s; }
+        .move-grade { font-size: 1.5em; display: block; margin-bottom: 5px; }
+        
+        /* Farben für Bewertungen */
+        .grade-brilliant { color: #2ecc71; text-shadow: 0 0 10px #2ecc71; } /* Grün leuchtend */
+        .grade-bad { color: #e74c3c; text-shadow: 0 0 10px #e74c3c; } /* Rot leuchtend */
+        .grade-normal { color: #bdc3c7; }
     </style>
 </head>
 <body>
 
     <div id="login-screen" class="screen active">
         <h1>Schach Login</h1>
-        <p>Melde dich an, um zu spielen.</p>
-        
-        <input type="text" id="reg-username" placeholder="Dein Spielername (z.B. Otto)">
         <input type="email" id="reg-email" placeholder="E-Mail Adresse">
         <input type="password" id="reg-password" placeholder="Passwort">
-        
+        <input type="text" id="reg-username" placeholder="Dein Spielername">
         <div style="display:flex; gap:10px;">
-            <button class="btn-green" onclick="doRegister()">Konto erstellen</button>
-            <button class="btn-blue" onclick="doLogin()">Einloggen</button>
+            <button class="btn-green" onclick="doRegister()">Registrieren</button>
+            <button class="btn-blue" onclick="doLogin()">Login</button>
         </div>
-        <p id="error-msg"></p>
+        <p id="error-msg" style="color:#e74c3c"></p>
     </div>
 
     <div id="lobby-screen" class="screen">
-        <div class="user-display">
-            Hallo, <b id="display-name" style="color:#f1c40f">Spieler</b>!
-            <a href="#" onclick="logout()" style="color:#e74c3c; float:right; text-decoration:none;">(Abmelden)</a>
-        </div>
-
-        <h3>🤖 Training</h3>
-        <button class="btn-blue" onclick="startBotGame()">Gegen Computer spielen</button>
-
-        <hr style="border-color:#7f8c8d; margin: 20px 0;">
-
-        <h3>🌍 Multiplayer</h3>
-        <p style="font-size:0.9em;">Gib einen Raumnamen ein, den dein Freund auch kennt.</p>
-        <input type="text" id="room-id" placeholder="Raum-Name (z.B. 'Duell1')">
-        
+        <h3>Hallo <span id="display-name" style="color:#f1c40f"></span></h3>
+        <button class="btn-blue" onclick="startBotGame()">🤖 Gegen Bot spielen</button>
+        <hr style="border-color:#555">
+        <p>Multiplayer Raum Name:</p>
+        <input type="text" id="room-id" placeholder="z.B. Duell1">
         <div style="display:flex; gap:10px;">
-            <button class="btn-green" onclick="startOnlineGame('white')">Als Weiß (Start)</button>
-            <button class="btn-green" style="background:#7f8c8d" onclick="startOnlineGame('black')">Als Schwarz (Beitreten)</button>
+            <button class="btn-green" onclick="startOnlineGame('white')">Weiß (Start)</button>
+            <button class="btn-green" style="background:#7f8c8d" onclick="startOnlineGame('black')">Schwarz (Beitritt)</button>
         </div>
+        <button class="btn-red" onclick="logout()" style="margin-top:20px;">Ausloggen</button>
     </div>
 
     <div id="game-screen" class="screen" style="max-width: 600px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span id="game-title" style="font-weight:bold; color:#f1c40f">Spiel läuft</span>
-            <button class="btn-red" style="width:auto; padding: 5px 10px; font-size:0.8em;" onclick="leaveGame()">Verlassen</button>
+        <div style="display:flex; justify-content:space-between;">
+            <span id="game-title" style="font-weight:bold; color:#f1c40f">Spiel</span>
+            <button class="btn-red" style="width:auto; padding:5px 10px;" onclick="leaveGame()">X</button>
         </div>
         
         <div id="board"></div>
         
-        <div class="status-box">
-            Status: <span id="status">Weiß beginnt</span>
+        <div class="analysis-box">
+            <div id="move-feedback" class="analysis-bar">
+                <span id="feedback-icon" class="move-grade">⚔️</span>
+                <span id="feedback-text">Mach deinen ersten Zug!</span>
+            </div>
+            <p style="font-size:0.8em; color:#aaa; margin-top:5px;">(Analyse basiert auf Materialwert)</p>
         </div>
     </div>
 
     <script>
-        // --- DEINE FIREBASE KONFIGURATION ---
+        // ======================================================
+        // HIER DEINE FIREBASE CONFIG EINFÜGEN !!!
+        // ======================================================
         const firebaseConfig = {
-            apiKey: "AIzaSyAwQMhOL1tBQfU5EivFfomrTLf2dINYRZs",
-            authDomain: "chess-server-d09b1.firebaseapp.com",
-            projectId: "chess-server-d09b1",
-            storageBucket: "chess-server-d09b1.firebasestorage.app",
-            messagingSenderId: "354655053561",
-            appId: "1:354655053561:web:43ea29ed1f01ee366f6428",
-            measurementId: "G-B2WK6GD8Z0"
+            apiKey: "DEINE_API_KEY_HIER",
+            authDomain: "DEIN_PROJEKT.firebaseapp.com",
+            projectId: "DEIN_PROJEKT",
+            storageBucket: "DEIN_PROJEKT.appspot.com",
+            messagingSenderId: "123...",
+            appId: "1:123..."
         };
 
-        // Firebase Starten
+        // Init
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // Variablen
         let game = new Chess();
         let board = null;
-        let isOnline = false;
+        let isOnline = false; 
         let isBot = false;
         let myColor = 'w';
         let currentRoom = '';
+        let previousScore = 0; // Für die Analyse
 
-        // --- AUTHENTIFIZIERUNG ---
+        // --- FIGUREN BILDER FIX ---
+        // Das hier repariert die unsichtbaren Figuren!
+        function pieceTheme (piece) {
+            return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png';
+        }
+
+        // --- AUTH ---
         auth.onAuthStateChanged(user => {
             if (user) {
-                // Eingeloggt -> Zeige Lobby
                 $('.screen').removeClass('active');
                 $('#lobby-screen').addClass('active');
-                
-                // Namen laden
                 db.ref('users/' + user.uid).once('value').then(snap => {
-                    const val = snap.val();
-                    const name = (val && val.username) ? val.username : user.email;
+                    let name = (snap.val() && snap.val().username) ? snap.val().username : "Spieler";
                     $('#display-name').text(name);
                 });
             } else {
-                // Ausgeloggt -> Zeige Login
                 $('.screen').removeClass('active');
                 $('#login-screen').addClass('active');
             }
         });
 
         function doRegister() {
-            const user = $('#reg-username').val();
-            const email = $('#reg-email').val();
-            const pass = $('#reg-password').val();
-            
-            if(!user) { $('#error-msg').text("Bitte Namen wählen!"); return; }
-            
-            auth.createUserWithEmailAndPassword(email, pass)
-                .then(cred => {
-                    // Namen speichern
-                    db.ref('users/' + cred.user.uid).set({ username: user, email: email });
-                })
-                .catch(e => $('#error-msg').text(e.message));
+            const u = $('#reg-username').val();
+            const e = $('#reg-email').val();
+            const p = $('#reg-password').val();
+            if(!u) return alert("Name fehlt!");
+            auth.createUserWithEmailAndPassword(e, p).then(c => {
+                db.ref('users/' + c.user.uid).set({username:u, email:e});
+            }).catch(err => alert(err.message));
         }
-
         function doLogin() {
             auth.signInWithEmailAndPassword($('#reg-email').val(), $('#reg-password').val())
-                .catch(e => $('#error-msg').text(e.message));
+                .catch(err => alert(err.message));
         }
-
         function logout() { auth.signOut(); }
 
-        // --- SCHACH LOGIK ---
-        
+        // --- BOARD SETUP ---
         function initBoard(type) {
             game.reset();
+            previousScore = 0; // Reset Analyse
+            updateAnalysisDisplay(0, "Spielstart");
+
             const config = {
                 draggable: true,
                 position: 'start',
+                pieceTheme: pieceTheme, // WICHTIG: Nutzt die Wikipedia Bilder
                 onDragStart: onDragStart,
                 onDrop: type === 'bot' ? onDropBot : onDropOnline,
                 onSnapEnd: () => board.position(game.fen())
             };
             board = Chessboard('board', config);
-            updateStatus();
         }
 
         function onDragStart(source, piece) {
             if (game.game_over()) return false;
-            
-            // Bot Modus: Nur Weiß darf ziehen
             if (isBot && (game.turn() === 'b' || piece.search(/^b/) !== -1)) return false;
-
-            // Online Modus: Nur eigene Farbe darf ziehen
             if (isOnline) {
                 if (game.turn() !== myColor.charAt(0)) return false;
                 if ((myColor === 'white' && piece.search(/^b/) !== -1) || 
@@ -186,24 +173,82 @@
             }
         }
 
-        function updateStatus() {
-            let status = '';
-            let moveColor = game.turn() === 'b' ? 'Schwarz' : 'Weiß';
+        // --- ANALYSE FUNKTION (Die "Chess.com" Logik) ---
+        function evaluateAndShow(moveSource, moveTarget) {
+            // 1. Berechne Score VOR dem Zug (wurde schon gespeichert)
+            let scoreBefore = previousScore;
 
-            if (game.in_checkmate()) { status = 'Spiel vorbei! ' + moveColor + ' ist Matt.'; }
-            else if (game.in_draw()) { status = 'Unentschieden!'; }
-            else {
-                status = moveColor + ' ist am Zug.';
-                if (game.in_check()) status += ' (SCHACH!)';
+            // 2. Berechne Score NACH dem Zug
+            let scoreAfter = calculateMaterialScore();
+            previousScore = scoreAfter; // Speichern für nächsten Zug
+
+            // 3. Wer hat gezogen?
+            let whoMoved = game.turn() === 'w' ? 'black' : 'white'; // Achtung: turn() ist jetzt schon der nächste Spieler
+            
+            // Differenz berechnen (Aus Sicht des Spielers der gerade gezogen hat)
+            let diff = scoreAfter - scoreBefore;
+            if (whoMoved === 'black') diff = diff * -1; // Score umdrehen für Schwarz
+
+            // 4. Feedback geben
+            let text = "Normaler Zug";
+            let icon = "👌";
+            let cssClass = "grade-normal";
+
+            if (diff >= 3) {
+                text = "Brillanter Zug! (+Material)";
+                icon = "🔥 !!";
+                cssClass = "grade-brilliant";
+            } else if (diff >= 1) {
+                text = "Guter Zug";
+                icon = "✅";
+                cssClass = "grade-brilliant";
+            } else if (diff <= -3) {
+                text = "BLUNDER (Figur eingestellt)";
+                icon = "😱 ??";
+                cssClass = "grade-bad";
+            } else if (diff <= -1) {
+                text = "Ungenau / Fehler";
+                icon = "❌";
+                cssClass = "grade-bad";
             }
-            $('#status').text(status);
+            
+            // Sonderfall: Schachmatt
+            if (game.in_checkmate()) {
+                text = "SCHACHMATT!";
+                icon = "🏆";
+                cssClass = "grade-brilliant";
+            }
+
+            updateAnalysisDisplay(cssClass, icon + " " + text);
         }
 
-        // --- BOT MODUS ---
+        function calculateMaterialScore() {
+            // Einfache Berechnung: Bauer=1, Springer/Läufer=3, Turm=5, Dame=9
+            let fen = game.fen().split(' ')[0];
+            let score = 0;
+            const values = { p:1, n:3, b:3, r:5, q:9, k:0 };
+            
+            for (let i = 0; i < fen.length; i++) {
+                let char = fen[i];
+                if (values[char.toLowerCase()]) {
+                    let val = values[char.toLowerCase()];
+                    if (char === char.toUpperCase()) score += val; // Weiß
+                    else score -= val; // Schwarz
+                }
+            }
+            return score;
+        }
+
+        function updateAnalysisDisplay(cssClass, text) {
+            $('#feedback-icon').html(text.split(' ')[0]);
+            $('#feedback-text').text(text.substring(text.indexOf(' ') + 1));
+            $('#move-feedback').removeClass().addClass('analysis-bar ' + cssClass);
+        }
+
+        // --- SPIEL ABLÄUFE ---
         function startBotGame() {
             $('.screen').removeClass('active');
             $('#game-screen').addClass('active');
-            $('#game-title').text("Spiel gegen Bot");
             isBot = true; isOnline = false;
             setTimeout(() => initBoard('bot'), 200);
         }
@@ -211,44 +256,43 @@
         function onDropBot(source, target) {
             let move = game.move({ from: source, to: target, promotion: 'q' });
             if (move === null) return 'snapback';
-            updateStatus();
-            window.setTimeout(makeRandomMove, 250);
+            
+            evaluateAndShow(source, target); // ANALYSE ANZEIGEN
+            
+            window.setTimeout(makeRandomMove, 500);
         }
 
         function makeRandomMove() {
-            let possibleMoves = game.moves();
-            if (possibleMoves.length === 0) return;
-            let randomIdx = Math.floor(Math.random() * possibleMoves.length);
-            game.move(possibleMoves[randomIdx]);
+            let moves = game.moves();
+            if (moves.length === 0) return;
+            let randomIdx = Math.floor(Math.random() * moves.length);
+            game.move(moves[randomIdx]);
             board.position(game.fen());
-            updateStatus();
+            
+            // Auch Bot-Zug analysieren (aber leise speichern)
+            previousScore = calculateMaterialScore(); 
         }
 
-        // --- MULTIPLAYER MODUS ---
         function startOnlineGame(side) {
-            const room = $('#room-id').val();
-            if(!room) { alert("Bitte einen Raumnamen eingeben!"); return; }
-            
+            let room = $('#room-id').val();
+            if(!room) return alert("Raumname fehlt!");
             currentRoom = room;
             myColor = side;
             isOnline = true; isBot = false;
-
             $('.screen').removeClass('active');
             $('#game-screen').addClass('active');
-            $('#game-title').text("Raum: " + room + " (" + (side==='white'?'Weiß':'Schwarz') + ")");
-
+            
             setTimeout(() => {
                 initBoard('online');
                 if(side === 'black') board.orientation('black');
             }, 200);
 
-            // Listener: Wenn sich was in der Datenbank ändert
-            db.ref('games/' + room).on('value', snapshot => {
-                const data = snapshot.val();
+            db.ref('games/' + room).on('value', snap => {
+                let data = snap.val();
                 if(data && data.fen) {
                     game.load(data.fen);
                     board.position(data.fen);
-                    updateStatus();
+                    previousScore = calculateMaterialScore(); // Score synchronisieren
                 }
             });
         }
@@ -256,18 +300,14 @@
         function onDropOnline(source, target) {
             let move = game.move({ from: source, to: target, promotion: 'q' });
             if (move === null) return 'snapback';
+            
+            evaluateAndShow(source, target); // ANALYSE
 
-            // Zug an Datenbank senden
-            db.ref('games/' + currentRoom).set({
-                fen: game.fen()
-            });
-            updateStatus();
+            db.ref('games/' + currentRoom).set({ fen: game.fen() });
         }
 
         function leaveGame() {
-            if(isOnline && currentRoom) {
-                db.ref('games/' + currentRoom).off(); // Verbindung trennen
-            }
+            if(isOnline && currentRoom) db.ref('games/' + currentRoom).off();
             $('.screen').removeClass('active');
             $('#lobby-screen').addClass('active');
         }
