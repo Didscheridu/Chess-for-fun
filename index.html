@@ -2,49 +2,112 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Schach Pro (Punkte & Klicks)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schach Master Suite</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #212121; color: #ecf0f1; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        /* --- GRUNDDESIGN --- */
+        body { font-family: 'Segoe UI', sans-serif; background-color: #1a1a1a; color: #ecf0f1; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
         
-        .screen { width: 95%; max-width: 450px; padding: 20px; background: #2c3e50; border-radius: 12px; margin-top: 20px; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.6); }
-        .active { display: block; animation: fadeIn 0.5s; } 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .screen { width: 95%; max-width: 500px; padding: 20px; background: #2c3e50; border-radius: 12px; margin-top: 20px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.8); position: relative; }
+        .active { display: block; animation: fadeIn 0.4s ease-out; } 
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; font-size: 16px; box-sizing: border-box; }
-        button { padding: 12px; margin: 5px 0; border-radius: 6px; border: none; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
+        h1, h2, h3 { color: #f1c40f; margin: 10px 0; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; font-size: 16px; box-sizing: border-box; background: #34495e; color: white; }
+        
+        button { padding: 12px; margin: 5px 0; border-radius: 6px; border: none; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; transition: transform 0.1s, filter 0.2s; }
+        button:active { transform: scale(0.97); }
+        button:hover { filter: brightness(1.1); }
+        
         .btn-green { background: #27ae60; color: white; } 
         .btn-blue { background: #2980b9; color: white; }
         .btn-red { background: #c0392b; color: white; }
+        .btn-gold { background: linear-gradient(45deg, #f1c40f, #d35400); color: black; }
+        .btn-outline { background: transparent; border: 2px solid #7f8c8d; color: #bdc3c7; }
 
-        #board { width: 100%; margin: 15px 0; }
+        /* --- SCHACHBRETT & SKINS --- */
+        #board-container { position: relative; width: 100%; margin: 10px 0; }
+        #board { width: 100%; }
 
-        /* HIER SIND DIE PUNKTE FÜR DAS KLICKEN */
-        .highlight-move { box-shadow: inset 0 0 3px 3px yellow; }
-        .possible-move {
-            background: radial-gradient(rgba(20, 255, 0, 0.5) 19%, rgba(0,0,0,0) 20%);
-            /* Das erstellt den grünen Punkt in der Mitte */
+        /* Skin: Klassisch (Grün) */
+        .skin-classic .white-1e1d7 { background-color: #f0d9b5; color: #b58863; }
+        .skin-classic .black-3c85d { background-color: #b58863; color: #f0d9b5; }
+        
+        /* Skin: Ozean (Blau) */
+        .skin-ocean .white-1e1d7 { background-color: #dee3e6; }
+        .skin-ocean .black-3c85d { background-color: #8ca2ad; }
+
+        /* Skin: Rubin (Rot) */
+        .skin-ruby .white-1e1d7 { background-color: #ffcece; }
+        .skin-ruby .black-3c85d { background-color: #c0392b; }
+
+        /* Skin: Mitternacht (Dunkel) */
+        .skin-midnight .white-1e1d7 { background-color: #7f8c8d; }
+        .skin-midnight .black-3c85d { background-color: #2c3e50; }
+
+        /* Highlights & Punkte */
+        .highlight-move { box-shadow: inset 0 0 5px 4px rgba(255, 255, 0, 0.7) !important; }
+        .possible-move { background: radial-gradient(rgba(0, 255, 0, 0.6) 19%, transparent 20%); }
+
+        /* --- ANALYSE BUBBLES (Chess.com Style) --- */
+        .move-feedback {
+            position: absolute; width: 40px; height: 40px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 20px; font-weight: bold; color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 100;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
+        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+        
+        .fb-brilliant { background: #1abc9c; } /* Türkis */
+        .fb-great { background: #27ae60; }    /* Grün */
+        .fb-best { background: #16a085; }     /* Dunkelgrün */
+        .fb-good { background: #95a5a6; }     /* Grau/Gut */
+        .fb-inaccuracy { background: #f1c40f; color: #333; } /* Gelb */
+        .fb-mistake { background: #e67e22; }  /* Orange */
+        .fb-blunder { background: #c0392b; }  /* Rot */
 
-        .stats-box { background: #16a085; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; display: flex; justify-content: space-around; }
-        .win-animation { animation: winPulse 1s infinite; color: #f1c40f; }
-        @keyframes winPulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        /* --- PLAYER INFO & CAPTURED PIECES --- */
+        .player-bar { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 8px; border-radius: 5px; margin: 5px 0; font-size: 0.9em; }
+        .graveyard { display: flex; gap: 2px; height: 20px; align-items: center; }
+        .graveyard img { height: 18px; width: 18px; }
+        .material-score { background: #444; padding: 2px 5px; border-radius: 3px; font-size: 0.8em; margin-left: 5px; }
+
+        /* --- GAME OVER MODAL --- */
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            z-index: 200; display: none; flex-direction: column; justify-content: center; align-items: center;
+            border-radius: 12px;
+        }
+        .modal-content { text-align: center; color: white; padding: 20px; }
+        .modal-icon { font-size: 50px; margin-bottom: 20px; display: block; }
+
+        /* --- SHOP GRID --- */
+        .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .skin-card { background: #34495e; padding: 10px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; position: relative; }
+        .skin-card.selected { border-color: #f1c40f; }
+        .skin-card:hover { background: #3e5871; }
+        .skin-preview { height: 50px; width: 100%; border-radius: 4px; margin-bottom: 5px; }
+        .lock-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; border-radius: 8px; }
+
     </style>
 </head>
 <body>
 
     <div id="login-screen" class="screen active">
-        <h1 style="color:#f1c40f">Schach Login</h1>
+        <h1>♞ Schach Elite</h1>
         <input type="text" id="reg-username" placeholder="Spielername">
         <input type="email" id="reg-email" placeholder="E-Mail">
         <input type="password" id="reg-password" placeholder="Passwort">
@@ -56,37 +119,80 @@
     </div>
 
     <div id="lobby-screen" class="screen">
-        <h3>Willkommen, <span id="display-name" style="color:#f1c40f">Spieler</span>!</h3>
-        
-        <div class="stats-box">
-            <span>🏆 Siege: <span id="user-wins">0</span></span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div style="text-align:left;">
+                <span style="color:#bdc3c7; font-size:0.9em;">Willkommen</span><br>
+                <strong id="display-name" style="font-size:1.2em; color:#f1c40f">Spieler</strong>
+            </div>
+            <div style="text-align:right;">
+                <span style="color:#bdc3c7; font-size:0.9em;">Siege</span><br>
+                <strong id="display-wins">0</strong> 🏆
+            </div>
         </div>
 
-        <button class="btn-blue" onclick="startBotGame()">🤖 Gegen Bot spielen</button>
-        <hr style="border-color:#555; margin: 20px 0;">
-        <label>Multiplayer Raum:</label>
-        <input type="text" id="room-id" placeholder="z.B. Arena1">
+        <button class="btn-blue" onclick="startBotGame()"><i class="fas fa-robot"></i> Gegen Bot</button>
+        <button class="btn-gold" onclick="openShop()"><i class="fas fa-paint-brush"></i> Skins & Shop</button>
+        
+        <hr style="border-color:#444; margin: 20px 0;">
+        
+        <p style="text-align:left; color:#bdc3c7; font-size:0.9em; margin-bottom:5px;">Online Multiplayer:</p>
+        <input type="text" id="room-id" placeholder="Raum-Name (z.B. 'Berlin')">
         <div style="display:flex; gap:10px;">
-            <button class="btn-green" onclick="startOnlineGame('white')">Weiß (Starten)</button>
-            <button class="btn-green" style="background:#7f8c8d" onclick="startOnlineGame('black')">Schwarz (Beitreten)</button>
+            <button class="btn-green" onclick="startOnlineGame('white')">Weiß Start</button>
+            <button class="btn-green" style="background:#7f8c8d" onclick="startOnlineGame('black')">Schwarz Beitritt</button>
         </div>
-        <button class="btn-red" onclick="logout()" style="margin-top:10px;">Abmelden</button>
+        <button class="btn-red" onclick="logout()" style="margin-top:20px;">Abmelden</button>
     </div>
 
-    <div id="game-screen" class="screen" style="max-width: 550px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span id="game-title" style="font-weight:bold; color:#f1c40f">Spiel läuft</span>
-            <button class="btn-red" style="width:auto; padding:5px 12px;" onclick="leaveGame()">Verlassen</button>
+    <div id="shop-screen" class="screen">
+        <h3>Design Shop</h3>
+        <p style="font-size:0.9em; color:#aaa;">Schalte Skins mit Siegen frei!</p>
+        <p>Deine Siege: <strong id="shop-wins" style="color:#f1c40f">0</strong></p>
+
+        <div class="shop-grid" id="skin-list">
+            </div>
+
+        <button class="btn-outline" onclick="showScreen('lobby-screen')" style="margin-top:20px;">Zurück zur Lobby</button>
+    </div>
+
+    <div id="game-screen" class="screen" style="max-width: 550px; padding: 10px;">
+        <div class="player-bar">
+            <span><i class="fas fa-user"></i> Gegner</span>
+            <div style="display:flex; align-items:center;">
+                <div id="graveyard-top" class="graveyard"></div>
+                <span id="score-top" class="material-score hidden"></span>
+            </div>
         </div>
-        
-        <div id="board"></div>
-        <div style="background:#222; padding:10px; border-radius:5px;">
-            <span id="status-text">Weiß beginnt</span>
+
+        <div id="board-container">
+            <div id="board"></div>
+            <div id="game-over-modal" class="modal-overlay">
+                <div class="modal-content">
+                    <span id="modal-icon" class="modal-icon">🏆</span>
+                    <h2 id="modal-title">GEWONNEN!</h2>
+                    <p id="modal-reason" style="color:#ccc;">Schachmatt</p>
+                    <br>
+                    <button class="btn-green" onclick="leaveGame()">Zurück zum Menü</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="player-bar">
+            <span><i class="fas fa-user-circle"></i> <span id="game-my-name">Ich</span></span>
+            <div style="display:flex; align-items:center;">
+                <div id="graveyard-bottom" class="graveyard"></div>
+                <span id="score-bottom" class="material-score hidden"></span>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+            <span id="status-text" style="font-weight:bold; color:#f1c40f; font-size:0.9em;">Spiel beginnt...</span>
+            <button class="btn-red" style="width:auto; padding:5px 15px; font-size:0.8em;" onclick="leaveGame()">Aufgeben</button>
         </div>
     </div>
 
     <script>
-        // --- CONFIG ---
+        // --- KONFIGURATION (API) ---
         const firebaseConfig = {
             apiKey: "AIzaSyAwQMhOL1tBQfU5EivFfomrTLf2dINYRZs",
             authDomain: "chess-server-d09b1.firebaseapp.com",
@@ -100,46 +206,77 @@
         const auth = firebase.auth();
         const db = firebase.database();
 
+        // --- VARIABLEN ---
         let game = new Chess();
         let board = null;
         let isOnline = false, isBot = false;
         let myColor = 'w', currentRoom = '';
-        let selectedSquare = null; // Für das Klicken
+        let selectedSquare = null;
+        let userData = { wins: 0, skin: 'classic', unlockedSkins: ['classic'] };
+        let previousScore = 0;
 
-        function pieceTheme(piece) { return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png'; }
+        // SKINS DATEN
+        const SKINS = {
+            'classic': { name: 'Klassisch', cost: 0, css: 'skin-classic', colors: ['#f0d9b5', '#b58863'] },
+            'ocean':   { name: 'Ozean',     cost: 3, css: 'skin-ocean',   colors: ['#dee3e6', '#8ca2ad'] },
+            'ruby':    { name: 'Rubin',     cost: 10, css: 'skin-ruby',    colors: ['#ffcece', '#c0392b'] },
+            'midnight':{ name: 'Mitternacht', cost: 20, css: 'skin-midnight',colors: ['#7f8c8d', '#2c3e50'] }
+        };
 
-        // --- AUTH ---
+        // --- AUTH & USER ---
         auth.onAuthStateChanged(user => {
             if (user) {
-                $('.screen').removeClass('active'); $('#lobby-screen').addClass('active');
-                // Daten laden (Name und Siege)
+                showScreen('lobby-screen');
+                // Lade User Daten + Skins
                 db.ref('users/' + user.uid).on('value', snap => {
-                    let val = snap.val();
-                    $('#display-name').text(val && val.username ? val.username : "Spieler");
-                    $('#user-wins').text(val && val.wins ? val.wins : "0");
+                    let val = snap.val() || {};
+                    userData.username = val.username || "Spieler";
+                    userData.wins = val.wins || 0;
+                    userData.skin = val.skin || 'classic';
+                    userData.unlockedSkins = val.unlockedSkins || ['classic'];
+                    
+                    $('#display-name').text(userData.username);
+                    $('#display-wins').text(userData.wins);
+                    $('#game-my-name').text(userData.username);
+                    $('#shop-wins').text(userData.wins);
                 });
             } else {
-                $('.screen').removeClass('active'); $('#login-screen').addClass('active');
+                showScreen('login-screen');
             }
         });
+
         function doRegister() {
             let u=$('#reg-username').val(), e=$('#reg-email').val(), p=$('#reg-password').val();
             if(!u) return alert("Name fehlt!");
             auth.createUserWithEmailAndPassword(e,p).then(c=>{
-                db.ref('users/'+c.user.uid).set({username:u, email:e, wins:0});
+                let initData = { username:u, email:e, wins:0, skin:'classic', unlockedSkins:['classic'] };
+                db.ref('users/'+c.user.uid).set(initData);
             }).catch(er=>$('#error-msg').text(er.message));
         }
         function doLogin() { auth.signInWithEmailAndPassword($('#reg-email').val(),$('#reg-password').val()).catch(e=>$('#error-msg').text(e.message)); }
         function logout() { auth.signOut(); location.reload(); }
 
-        // --- BOARD & KLICK LOGIK ---
+        // --- HELPER ---
+        function showScreen(id) {
+            $('.screen').removeClass('active');
+            $('#' + id).addClass('active');
+        }
+        function pieceTheme(piece) { return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png'; }
+
+        // --- BOARD INITIALISIERUNG ---
         function initBoard(type) {
             game.reset();
             selectedSquare = null;
-            removeHighlights();
+            previousScore = 0;
+            $('#graveyard-top, #graveyard-bottom').empty();
+            $('#score-top, #score-bottom').text('').addClass('hidden');
+            $('#game-over-modal').css('display', 'none'); // Modal verstecken
+            
+            // Skin anwenden
+            $('#board').removeClass().addClass(SKINS[userData.skin].css);
 
             const config = {
-                draggable: true, // Ziehen bleibt erlaubt
+                draggable: true,
                 position: 'start',
                 pieceTheme: pieceTheme,
                 onDragStart: onDragStart,
@@ -148,186 +285,335 @@
             };
             board = Chessboard('board', config);
             
-            // KLICK EVENT HINZUFÜGEN (JQuery)
-            $('#board').on('click', '.square-55d63', function() {
-                let square = $(this).attr('data-square');
-                handleSquareClick(square);
+            // Klick Handler
+            $('#board').off('click').on('click', '.square-55d63', function() {
+                handleSquareClick($(this).attr('data-square'));
             });
+
+            updateGameInfo();
         }
 
-        // --- DIE NEUE KLICK-FUNKTION ---
-        function handleSquareClick(square) {
-            // 1. Wenn wir schon eine Figur ausgewählt haben und auf ein Ziel klicken:
-            if (selectedSquare !== null) {
-                // Versuch den Zug zu machen
-                let move = null;
-                try {
-                    move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
-                } catch(e) { move = null; }
+        // --- ZUG ANALYSE & FEEDBACK (Das "Brillant" System) ---
+        function analyzeAndFeedback(move, sourceSquare, targetSquare) {
+            // Material Berechnung
+            let currentScore = getMaterialScore();
+            let diff = currentScore - previousScore;
+            // Wenn Schwarz gezogen hat, müssen wir die Perspektive drehen
+            if (game.turn() === 'w') diff = diff * -1; 
+            
+            previousScore = currentScore; // Speichern für nächsten Zug
 
-                // Wenn Zug gültig war:
-                if (move !== null) {
-                    board.position(game.fen()); // Brett update
-                    removeHighlights();
-                    selectedSquare = null;
-                    
-                    // Logik für Bot/Online feuern
-                    if(isBot) { 
-                        updateStatus(); 
-                        setTimeout(makeRandomMove, 250); 
-                    }
-                    if(isOnline) { 
-                        updateStatus(); 
-                        db.ref('games/'+currentRoom).set({fen: game.fen()}); 
-                    }
+            let type = "normal";
+            let icon = "";
+            
+            // Bewertungs-Logik
+            if (game.in_checkmate()) { type="brilliant"; icon="🏆"; }
+            else if (move.captured) {
+                // Wenn wir was wertvolles schlagen
+                if ("rq".includes(move.captured)) { type="great"; icon="🔥"; } // Dame/Turm geschlagen
+                else if (diff >= 3) { type="best"; icon="⭐"; } // Guter Materialgewinn
+                else { type="good"; icon="⚔️"; }
+            } 
+            else if (game.in_check()) { type="great"; icon="🎯"; }
+            else if (diff <= -3) { type="blunder"; icon="??"; } // Figur eingestellt
+            else if (diff <= -1) { type="mistake"; icon="?"; }
+            
+            // Bubble nur anzeigen wenn es erwähnenswert ist
+            if (type !== "normal") {
+                showFeedbackBubble(targetSquare, type, icon);
+            }
+        }
+
+        function showFeedbackBubble(square, type, icon) {
+            // Mapping CSS Klassen
+            const classes = {
+                'brilliant': 'fb-brilliant', 'great': 'fb-great', 'best': 'fb-best',
+                'good': 'fb-good', 'blunder': 'fb-blunder', 'mistake': 'fb-mistake'
+            };
+            
+            // Position finden
+            let $sq = $('#board .square-' + square);
+            if ($sq.length === 0) return;
+            let offset = $sq.offset();
+            let boardOffset = $('#board-container').offset();
+            
+            let bubble = $('<div class="move-feedback ' + classes[type] + '">' + icon + '</div>');
+            
+            // Bubble relativ zum Container positionieren
+            bubble.css({
+                top: (offset.top - boardOffset.top - 10) + 'px',
+                left: (offset.left - boardOffset.left + 30) + 'px'
+            });
+
+            $('#board-container').append(bubble);
+            // Nach 2 Sekunden entfernen
+            setTimeout(() => bubble.fadeOut(500, function(){ $(this).remove(); }), 2000);
+        }
+
+        // --- GESCHLAGENE FIGUREN & SCORE ---
+        function updateGameInfo() {
+            // 1. Status Text
+            let status = '';
+            let moveColor = game.turn() === 'b' ? 'Schwarz' : 'Weiß';
+            if (game.in_checkmate()) status = "MATT!";
+            else if (game.in_draw()) status = "Remis.";
+            else {
+                status = moveColor + " ist dran.";
+                if (game.in_check()) status += " (SCHACH!)";
+            }
+            $('#status-text').text(status);
+
+            // 2. Friedhof & Score Berechnung
+            let history = game.history({ verbose: true });
+            let whiteCaptures = [], blackCaptures = [];
+            
+            history.forEach(move => {
+                if (move.captured) {
+                    if (move.color === 'w') whiteCaptures.push(move.captured); // Weiß hat geschlagen -> Figur war Schwarz
+                    else blackCaptures.push(move.captured); // Schwarz hat geschlagen -> Figur war Weiß
+                }
+            });
+
+            // HTML Rendern
+            renderGraveyard(whiteCaptures, 'graveyard-top', 'b'); // Weiß hat schwarze Figuren
+            renderGraveyard(blackCaptures, 'graveyard-bottom', 'w'); // Schwarz hat weiße Figuren
+
+            // Score
+            let score = getMaterialScore();
+            $('#score-top, #score-bottom').text('').addClass('hidden');
+            if (score > 0) {
+                $('#score-bottom').text('+' + score).removeClass('hidden'); // Weiß führt (Ich bin unten)
+            } else if (score < 0) {
+                $('#score-top').text('+' + Math.abs(score)).removeClass('hidden'); // Schwarz führt (Gegner oben)
+            }
+        }
+
+        function renderGraveyard(pieces, elementId, colorPrefix) {
+            let html = '';
+            pieces.forEach(p => {
+                html += '<img src="https://chessboardjs.com/img/chesspieces/wikipedia/' + colorPrefix + p.toUpperCase() + '.png">';
+            });
+            $('#' + elementId).html(html);
+        }
+
+        function getMaterialScore() {
+            let fen = game.fen().split(' ')[0];
+            let score = 0;
+            const val = { p:1, n:3, b:3, r:5, q:9, k:0 };
+            for (let char of fen) {
+                if(val[char.toLowerCase()]) {
+                    let v = val[char.toLowerCase()];
+                    score += (char === char.toUpperCase()) ? v : -v;
+                }
+            }
+            return score;
+        }
+
+        // --- GAME OVER MODAL ---
+        function triggerGameOver(result) {
+            let title = "", reason = "", icon = "";
+            
+            if (result === 'win') {
+                title = "GEWONNEN!"; reason = "Schachmatt - Gut gespielt!"; icon = "🏆";
+                
+                // Sieg speichern
+                let uid = auth.currentUser.uid;
+                db.ref('users/'+uid+'/wins').transaction(w => (w||0)+1);
+
+            } else if (result === 'loss') {
+                title = "VERLOREN"; reason = "Schachmatt - Kopf hoch!"; icon = "💔";
+            } else {
+                title = "REMIS"; reason = "Unentschieden"; icon = "⚖️";
+            }
+
+            $('#modal-title').text(title);
+            $('#modal-reason').text(reason);
+            $('#modal-icon').text(icon);
+            $('#game-over-modal').css('display', 'flex').hide().fadeIn();
+        }
+
+        // --- LOGIK (Klicks & Moves) ---
+        function handleSquareClick(square) {
+            if (selectedSquare !== null) {
+                let move = null;
+                try { move = game.move({ from: selectedSquare, to: square, promotion: 'q' }); } catch(e){}
+                
+                if (move) {
+                    processMove(move);
                     return;
                 }
             }
-
-            // 2. Wenn kein Zug gemacht wurde (oder wir eine neue Figur anklicken):
-            // Prüfen ob da eine Figur steht und ob sie uns gehört
+            // Neue Auswahl
             let piece = game.get(square);
             if (piece && piece.color === game.turn()) {
-                // Online Check: Darf ich überhaupt ziehen?
                 if (isOnline && piece.color !== myColor.charAt(0)) return;
-                
-                // Bot Check: Ich bin immer weiß
                 if (isBot && piece.color === 'b') return;
 
-                // Markieren
                 selectedSquare = square;
                 removeHighlights();
-                $(this).addClass('highlight-move'); // Gelb markieren
-                
-                // Zeige mögliche Züge (Punkte)
-                let moves = game.moves({ square: square, verbose: true });
-                for (let i = 0; i < moves.length; i++) {
-                    highlightPossibleMove(moves[i].to);
-                }
+                $('#board .square-'+square).addClass('highlight-move');
+                game.moves({ square: square, verbose: true }).forEach(m => {
+                    $('#board .square-'+m.to).addClass('possible-move');
+                });
             } else {
-                // Klick ins Leere -> Auswahl aufheben
-                selectedSquare = null;
-                removeHighlights();
+                selectedSquare = null; removeHighlights();
             }
-        }
-
-        function highlightPossibleMove(square) {
-            let $square = $('#board .square-' + square);
-            $square.addClass('possible-move');
         }
 
         function removeHighlights() {
-            $('#board .square-55d63').removeClass('highlight-move');
-            $('#board .square-55d63').removeClass('possible-move');
+            $('#board .square-55d63').removeClass('highlight-move possible-move');
         }
 
-        // --- STANDARD LOGIK (DRAG & DROP) ---
         function onDragStart(source, piece) {
             if (game.game_over()) return false;
-            if (isOnline) {
-                if (game.turn() !== myColor.charAt(0)) return false;
-                if ((myColor === 'white' && piece.search(/^b/) !== -1) || (myColor === 'black' && piece.search(/^w/) !== -1)) return false;
-            }
+            if (isOnline && (game.turn() !== myColor.charAt(0) || piece.charAt(0) !== myColor.charAt(0))) return false;
             if (isBot && piece.search(/^b/) !== -1) return false;
-            
-            // Wenn man zieht, löschen wir die Klick-Markierungen
-            selectedSquare = null;
+            selectedSquare = null; removeHighlights();
+        }
+
+        function processMove(move) {
+            board.position(game.fen());
             removeHighlights();
-        }
-
-        // --- STATUS & GEWINNEN ---
-        function updateStatus() {
-            let status = '';
-            let moveColor = game.turn() === 'b' ? 'Schwarz' : 'Weiß';
-
-            if (game.in_checkmate()) {
-                status = 'MATT! ' + moveColor + ' hat verloren.';
-                handleWin(); // HIER PASSIERT DER GEWINN!
-            } else if (game.in_draw()) {
-                status = 'Unentschieden.';
-            } else {
-                status = moveColor + ' ist am Zug.';
-                if (game.in_check()) status += ' (Schach!)';
-            }
-            $('#status-text').text(status);
-        }
-
-        // --- GEWINN GUTSCHREIBEN ---
-        function handleWin() {
-            // Wer hat gewonnen? Derjenige, der NICHT am Zug ist (denn der andere ist Matt)
-            let winnerColor = game.turn() === 'w' ? 'black' : 'white';
+            selectedSquare = null;
             
-            // Habe ICH gewonnen?
-            let iAmWinner = false;
-            if (isOnline) {
-                if (myColor === 'white' && winnerColor === 'white') iAmWinner = true;
-                if (myColor === 'black' && winnerColor === 'black') iAmWinner = true;
-            } else if (isBot) {
-                if (winnerColor === 'white') iAmWinner = true;
+            analyzeAndFeedback(move, move.from, move.to);
+            updateGameInfo();
+
+            // Game Over Check
+            if (game.game_over()) {
+                if (game.in_checkmate()) {
+                    let winner = game.turn() === 'w' ? 'black' : 'white';
+                    if (isBot && winner === 'white') triggerGameOver('win');
+                    else if (isBot && winner === 'black') triggerGameOver('loss');
+                    else if (isOnline) {
+                        if ((myColor==='white' && winner==='white') || (myColor==='black' && winner==='black')) triggerGameOver('win');
+                        else triggerGameOver('loss');
+                    }
+                } else {
+                    triggerGameOver('draw');
+                }
+                return;
             }
 
-            if (iAmWinner) {
-                $('#status-text').addClass('win-animation').text("GEWONNEN! (+1 Sieg)");
-                
-                // Sieg in Datenbank speichern
-                let uid = auth.currentUser.uid;
-                // Wir nutzen transaction, um sicher hochzuzählen
-                db.ref('users/' + uid + '/wins').transaction(currentWins => {
-                    return (currentWins || 0) + 1;
-                });
-            } else {
-                $('#status-text').text("VERLOREN. Viel Glück beim nächsten Mal.");
-            }
+            // Weiterleitung Bot/Online
+            if (isBot && game.turn() === 'b') setTimeout(makeBotMove, 400);
+            if (isOnline) db.ref('games/'+currentRoom).set({ fen: game.fen(), lastMove: move });
         }
 
-        // --- SPIEL MODI ---
+        // --- MODI ---
         function startBotGame() {
-            $('.screen').removeClass('active'); $('#game-screen').addClass('active');
-            isBot = true; isOnline = false;
+            showScreen('game-screen'); isBot=true; isOnline=false;
             setTimeout(() => initBoard('bot'), 200);
         }
         function onDropBot(source, target) {
             let move = game.move({ from: source, to: target, promotion: 'q' });
-            if (move === null) return 'snapback';
-            updateStatus();
-            setTimeout(makeRandomMove, 250);
+            if (!move) return 'snapback';
+            processMove(move);
         }
-        function makeRandomMove() {
-            let moves = game.moves();
+        function makeBotMove() {
+            let moves = game.moves({ verbose: true });
             if (moves.length === 0) return;
-            game.move(moves[Math.floor(Math.random() * moves.length)]);
-            board.position(game.fen());
-            updateStatus();
+            let move = moves[Math.floor(Math.random() * moves.length)];
+            game.move(move.san);
+            processMove(move);
         }
 
         function startOnlineGame(side) {
             let r = $('#room-id').val(); if(!r) return alert("Raumname fehlt!");
             currentRoom=r; myColor=side; isOnline=true; isBot=false;
-            $('.screen').removeClass('active'); $('#game-screen').addClass('active');
+            showScreen('game-screen');
             setTimeout(() => {
                 initBoard('online');
                 if(side==='black') board.orientation('black');
             }, 200);
+            
+            db.ref('games/'+r).off(); // Reset Listener
             db.ref('games/'+r).on('value', s => {
                 let d = s.val();
                 if(d && d.fen) {
-                    game.load(d.fen);
-                    board.position(d.fen);
-                    updateStatus();
+                    if (game.fen() !== d.fen) {
+                        game.load(d.fen);
+                        board.position(d.fen);
+                        // Analyse für Gegnerzug anzeigen (Optional, hier vereinfacht)
+                        if (d.lastMove) analyzeAndFeedback(d.lastMove, d.lastMove.from, d.lastMove.to);
+                        updateGameInfo();
+                        
+                        // Game Over Check Online
+                        if(game.game_over()) {
+                             if(game.in_checkmate()) {
+                                 let winner = game.turn() === 'w' ? 'black' : 'white';
+                                 if ((myColor==='white' && winner==='white') || (myColor==='black' && winner==='black')) triggerGameOver('win');
+                                 else triggerGameOver('loss');
+                             } else triggerGameOver('draw');
+                        }
+                    }
                 }
             });
         }
         function onDropOnline(source, target) {
             let move = game.move({ from: source, to: target, promotion: 'q' });
-            if (move === null) return 'snapback';
-            updateStatus();
-            db.ref('games/'+currentRoom).set({ fen: game.fen() });
+            if (!move) return 'snapback';
+            processMove(move);
         }
         function leaveGame() {
             if(isOnline && currentRoom) db.ref('games/'+currentRoom).off();
-            $('.screen').removeClass('active'); $('#lobby-screen').addClass('active');
-            // Reset Status Text
-            $('#status-text').removeClass('win-animation').text("");
+            showScreen('lobby-screen');
+        }
+
+        // --- SHOP SYSTEM ---
+        function openShop() {
+            showScreen('shop-screen');
+            let container = $('#skin-list');
+            container.empty();
+            
+            Object.keys(SKINS).forEach(key => {
+                let skin = SKINS[key];
+                let isUnlocked = userData.unlockedSkins.includes(key);
+                let isSelected = userData.skin === key;
+                
+                // Vorschau Farbe erstellen
+                let gradient = `linear-gradient(45deg, ${skin.colors[0]} 50%, ${skin.colors[1]} 50%)`;
+                
+                let html = `
+                <div class="skin-card ${isSelected ? 'selected' : ''}" onclick="selectSkin('${key}')">
+                    <div class="skin-preview" style="background:${gradient}"></div>
+                    <strong>${skin.name}</strong><br>
+                    ${isUnlocked ? '<span style="color:#27ae60">Im Besitz</span>' : '<span style="color:#f1c40f">🔒 '+skin.cost+' Siege</span>'}
+                    ${isSelected ? '<br><i class="fas fa-check-circle" style="color:#2ecc71"></i> Aktiv' : ''}
+                    ${!isUnlocked ? '<div class="lock-overlay"><i class="fas fa-lock"></i></div>' : ''}
+                </div>`;
+                container.append(html);
+            });
+        }
+
+        function selectSkin(key) {
+            let skin = SKINS[key];
+            
+            if (userData.unlockedSkins.includes(key)) {
+                // Ausrüsten
+                userData.skin = key;
+                db.ref('users/'+auth.currentUser.uid).update({ skin: key });
+                openShop(); // Refresh
+            } else {
+                // Kaufen
+                if (userData.wins >= skin.cost) {
+                    if(confirm(skin.name + " für " + skin.cost + " Siege kaufen?")) {
+                        userData.wins -= skin.cost;
+                        userData.unlockedSkins.push(key);
+                        userData.skin = key;
+                        
+                        // Speichern
+                        db.ref('users/'+auth.currentUser.uid).update({
+                            wins: userData.wins,
+                            skin: userData.skin,
+                            unlockedSkins: userData.unlockedSkins
+                        });
+                        openShop();
+                    }
+                } else {
+                    alert("Nicht genug Siege! Du brauchst " + skin.cost);
+                }
+            }
         }
     </script>
 </body>
