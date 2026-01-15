@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Schach Pro (Animiert)</title>
+    <title>Schach Pro (Punkte & Klicks)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
@@ -17,46 +17,35 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #212121; color: #ecf0f1; text-align: center; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        /* Container */
-        .screen { width: 95%; max-width: 450px; padding: 20px; background: #2c3e50; border-radius: 12px; margin-top: 20px; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.6); transition: all 0.3s; }
+        .screen { width: 95%; max-width: 450px; padding: 20px; background: #2c3e50; border-radius: 12px; margin-top: 20px; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.6); }
         .active { display: block; animation: fadeIn 0.5s; } 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Inputs & Buttons */
         input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; font-size: 16px; box-sizing: border-box; }
-        button { padding: 12px; margin: 5px 0; border-radius: 6px; border: none; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; transition: transform 0.1s, opacity 0.2s; }
-        button:active { transform: scale(0.98); }
+        button { padding: 12px; margin: 5px 0; border-radius: 6px; border: none; cursor: pointer; font-size: 16px; font-weight: bold; width: 100%; }
         .btn-green { background: #27ae60; color: white; } 
         .btn-blue { background: #2980b9; color: white; }
         .btn-red { background: #c0392b; color: white; }
 
-        /* SCHACHBRETT & ANIMATIONEN */
-        #board { width: 100%; margin: 15px 0; border: 5px solid #34495e; border-radius: 4px; }
-        
-        /* Highlight Klasse für den letzten Zug */
-        .highlight-move { box-shadow: inset 0 0 3px 3px yellow; }
+        #board { width: 100%; margin: 15px 0; }
 
-        /* Shake Animation beim Schlagen */
-        .shake-board { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(2px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-            40%, 60% { transform: translate3d(4px, 0, 0); }
+        /* HIER SIND DIE PUNKTE FÜR DAS KLICKEN */
+        .highlight-move { box-shadow: inset 0 0 3px 3px yellow; }
+        .possible-move {
+            background: radial-gradient(rgba(20, 255, 0, 0.5) 19%, rgba(0,0,0,0) 20%);
+            /* Das erstellt den grünen Punkt in der Mitte */
         }
 
-        /* Analyse Anzeige */
-        .analysis-box { margin-top: 10px; background: #222; padding: 10px; border-radius: 8px; border: 1px solid #444; }
-        .grade-brilliant { color: #2ecc71; text-shadow: 0 0 10px #2ecc71; font-weight: bold; }
-        .grade-bad { color: #e74c3c; text-shadow: 0 0 10px #e74c3c; font-weight: bold; }
-        .grade-normal { color: #bdc3c7; }
+        .stats-box { background: #16a085; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; display: flex; justify-content: space-around; }
+        .win-animation { animation: winPulse 1s infinite; color: #f1c40f; }
+        @keyframes winPulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
 
     <div id="login-screen" class="screen active">
         <h1 style="color:#f1c40f">Schach Login</h1>
-        <input type="text" id="reg-username" placeholder="Dein Spielername">
+        <input type="text" id="reg-username" placeholder="Spielername">
         <input type="email" id="reg-email" placeholder="E-Mail">
         <input type="password" id="reg-password" placeholder="Passwort">
         <div style="display:flex; gap:10px;">
@@ -69,15 +58,17 @@
     <div id="lobby-screen" class="screen">
         <h3>Willkommen, <span id="display-name" style="color:#f1c40f">Spieler</span>!</h3>
         
+        <div class="stats-box">
+            <span>🏆 Siege: <span id="user-wins">0</span></span>
+        </div>
+
         <button class="btn-blue" onclick="startBotGame()">🤖 Gegen Bot spielen</button>
-        
-        <div style="margin: 20px 0; border-top: 1px solid #555; padding-top:20px;">
-            <label>Online Multiplayer:</label>
-            <input type="text" id="room-id" placeholder="Raum Name (z.B. 'Arena1')">
-            <div style="display:flex; gap:10px;">
-                <button class="btn-green" onclick="startOnlineGame('white')">Weiß (Starten)</button>
-                <button class="btn-green" style="background:#7f8c8d" onclick="startOnlineGame('black')">Schwarz (Beitreten)</button>
-            </div>
+        <hr style="border-color:#555; margin: 20px 0;">
+        <label>Multiplayer Raum:</label>
+        <input type="text" id="room-id" placeholder="z.B. Arena1">
+        <div style="display:flex; gap:10px;">
+            <button class="btn-green" onclick="startOnlineGame('white')">Weiß (Starten)</button>
+            <button class="btn-green" style="background:#7f8c8d" onclick="startOnlineGame('black')">Schwarz (Beitreten)</button>
         </div>
         <button class="btn-red" onclick="logout()" style="margin-top:10px;">Abmelden</button>
     </div>
@@ -89,17 +80,13 @@
         </div>
         
         <div id="board"></div>
-        
-        <div class="analysis-box">
-            <span id="feedback-icon" style="font-size:1.4em;">⚖️</span>
-            <span id="feedback-text">Spiel beginnt...</span>
+        <div style="background:#222; padding:10px; border-radius:5px;">
+            <span id="status-text">Weiß beginnt</span>
         </div>
     </div>
 
     <script>
-        // ======================================================
-        // DEINE API DATEN SIND HIER EINGEBAUT:
-        // ======================================================
+        // --- CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyAwQMhOL1tBQfU5EivFfomrTLf2dINYRZs",
             authDomain: "chess-server-d09b1.firebaseapp.com",
@@ -109,8 +96,6 @@
             appId: "1:354655053561:web:43ea29ed1f01ee366f6428",
             measurementId: "G-B2WK6GD8Z0"
         };
-
-        // Init
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
@@ -119,183 +104,230 @@
         let board = null;
         let isOnline = false, isBot = false;
         let myColor = 'w', currentRoom = '';
-        let previousScore = 0;
+        let selectedSquare = null; // Für das Klicken
 
-        // BILDER FIX (Wikipedia Style)
-        function pieceTheme(piece) {
-            return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png';
-        }
+        function pieceTheme(piece) { return 'https://chessboardjs.com/img/chesspieces/wikipedia/' + piece + '.png'; }
 
         // --- AUTH ---
         auth.onAuthStateChanged(user => {
             if (user) {
-                $('.screen').removeClass('active');
-                $('#lobby-screen').addClass('active');
-                db.ref('users/' + user.uid).once('value').then(snap => {
-                    let n = snap.val() && snap.val().username ? snap.val().username : "Spieler";
-                    $('#display-name').text(n);
+                $('.screen').removeClass('active'); $('#lobby-screen').addClass('active');
+                // Daten laden (Name und Siege)
+                db.ref('users/' + user.uid).on('value', snap => {
+                    let val = snap.val();
+                    $('#display-name').text(val && val.username ? val.username : "Spieler");
+                    $('#user-wins').text(val && val.wins ? val.wins : "0");
                 });
             } else {
-                $('.screen').removeClass('active');
-                $('#login-screen').addClass('active');
+                $('.screen').removeClass('active'); $('#login-screen').addClass('active');
             }
         });
         function doRegister() {
             let u=$('#reg-username').val(), e=$('#reg-email').val(), p=$('#reg-password').val();
             if(!u) return alert("Name fehlt!");
             auth.createUserWithEmailAndPassword(e,p).then(c=>{
-                db.ref('users/'+c.user.uid).set({username:u, email:e});
+                db.ref('users/'+c.user.uid).set({username:u, email:e, wins:0});
             }).catch(er=>$('#error-msg').text(er.message));
         }
-        function doLogin() {
-            auth.signInWithEmailAndPassword($('#reg-email').val(), $('#reg-password').val())
-            .catch(er=>$('#error-msg').text(er.message));
-        }
-        function logout() { auth.signOut(); }
+        function doLogin() { auth.signInWithEmailAndPassword($('#reg-email').val(),$('#reg-password').val()).catch(e=>$('#error-msg').text(e.message)); }
+        function logout() { auth.signOut(); location.reload(); }
 
-        // --- BOARD LOGIK ---
+        // --- BOARD & KLICK LOGIK ---
         function initBoard(type) {
             game.reset();
-            previousScore = 0;
-            $('#feedback-text').text("Viel Erfolg!");
-            $('#feedback-icon').text("🏁");
-            
-            // Animation: Highlighting entfernen
-            $('#board .square-55d63').removeClass('highlight-move');
+            selectedSquare = null;
+            removeHighlights();
 
             const config = {
-                draggable: true,
+                draggable: true, // Ziehen bleibt erlaubt
                 position: 'start',
                 pieceTheme: pieceTheme,
-                moveSpeed: 'slow', // Langsame, geschmeidige Bewegung
-                snapBackSpeed: 500,
-                snapSpeed: 100,
                 onDragStart: onDragStart,
                 onDrop: type === 'bot' ? onDropBot : onDropOnline,
                 onSnapEnd: () => board.position(game.fen())
             };
             board = Chessboard('board', config);
-        }
-
-        function onDragStart(source, piece) {
-            if (game.game_over()) return false;
-            if (isBot && (game.turn() === 'b' || piece.search(/^b/) !== -1)) return false;
-            if (isOnline) {
-                if (game.turn() !== myColor.charAt(0)) return false;
-                if ((myColor === 'white' && piece.search(/^b/) !== -1) || 
-                    (myColor === 'black' && piece.search(/^w/) !== -1)) return false;
-            }
-        }
-
-        // --- VISUAL EFFECTS (HIGHLIGHT & SHAKE) ---
-        function triggerEffects(move, source, target) {
-            // 1. Highlighting (Gelb für letzten Zug)
-            $('#board .square-55d63').removeClass('highlight-move');
-            $('#board .square-' + source).addClass('highlight-move');
-            $('#board .square-' + target).addClass('highlight-move');
-
-            // 2. Shake bei Capture (Schlagen)
-            if (move.captured) {
-                const boardEl = $('#board');
-                boardEl.addClass('shake-board');
-                setTimeout(() => boardEl.removeClass('shake-board'), 500); // Shake wieder entfernen
-            }
-        }
-
-        // --- ANALYSE ---
-        function updateAnalysis(move) {
-            let scoreNow = calculateScore();
-            let diff = scoreNow - previousScore;
-            previousScore = scoreNow;
             
-            // Perspektive drehen wenn Schwarz zieht
-            if (game.turn() === 'w') diff = diff * -1; // Schwarz hat gezogen
-
-            let txt = "Normaler Zug", ico = "👌", cls = "grade-normal";
-            
-            if (move.captured) { txt = "Geschlagen!"; ico = "⚔️"; }
-            if (diff >= 3) { txt = "Brillant!"; ico = "🔥"; cls = "grade-brilliant"; }
-            else if (diff <= -3) { txt = "Patzer (Figur weg)"; ico = "😱"; cls = "grade-bad"; }
-            
-            if (game.in_checkmate()) { txt = "SCHACHMATT"; ico = "🏆"; cls = "grade-brilliant"; }
-            else if (game.in_check()) { txt = "Schach!"; ico = "⚠️"; cls = "grade-brilliant"; }
-
-            $('#feedback-text').text(txt).attr('class', cls);
-            $('#feedback-icon').text(ico);
+            // KLICK EVENT HINZUFÜGEN (JQuery)
+            $('#board').on('click', '.square-55d63', function() {
+                let square = $(this).attr('data-square');
+                handleSquareClick(square);
+            });
         }
 
-        function calculateScore() {
-            let fen = game.fen().split(' ')[0], score = 0;
-            const val = { p:1, n:3, b:3, r:5, q:9, k:0 };
-            for(let c of fen) {
-                if(val[c.toLowerCase()]) {
-                    score += (c === c.toUpperCase() ? val[c.toLowerCase()] : -val[c.toLowerCase()]);
+        // --- DIE NEUE KLICK-FUNKTION ---
+        function handleSquareClick(square) {
+            // 1. Wenn wir schon eine Figur ausgewählt haben und auf ein Ziel klicken:
+            if (selectedSquare !== null) {
+                // Versuch den Zug zu machen
+                let move = null;
+                try {
+                    move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
+                } catch(e) { move = null; }
+
+                // Wenn Zug gültig war:
+                if (move !== null) {
+                    board.position(game.fen()); // Brett update
+                    removeHighlights();
+                    selectedSquare = null;
+                    
+                    // Logik für Bot/Online feuern
+                    if(isBot) { 
+                        updateStatus(); 
+                        setTimeout(makeRandomMove, 250); 
+                    }
+                    if(isOnline) { 
+                        updateStatus(); 
+                        db.ref('games/'+currentRoom).set({fen: game.fen()}); 
+                    }
+                    return;
                 }
             }
-            return score;
+
+            // 2. Wenn kein Zug gemacht wurde (oder wir eine neue Figur anklicken):
+            // Prüfen ob da eine Figur steht und ob sie uns gehört
+            let piece = game.get(square);
+            if (piece && piece.color === game.turn()) {
+                // Online Check: Darf ich überhaupt ziehen?
+                if (isOnline && piece.color !== myColor.charAt(0)) return;
+                
+                // Bot Check: Ich bin immer weiß
+                if (isBot && piece.color === 'b') return;
+
+                // Markieren
+                selectedSquare = square;
+                removeHighlights();
+                $(this).addClass('highlight-move'); // Gelb markieren
+                
+                // Zeige mögliche Züge (Punkte)
+                let moves = game.moves({ square: square, verbose: true });
+                for (let i = 0; i < moves.length; i++) {
+                    highlightPossibleMove(moves[i].to);
+                }
+            } else {
+                // Klick ins Leere -> Auswahl aufheben
+                selectedSquare = null;
+                removeHighlights();
+            }
         }
 
-        // --- BOT ---
+        function highlightPossibleMove(square) {
+            let $square = $('#board .square-' + square);
+            $square.addClass('possible-move');
+        }
+
+        function removeHighlights() {
+            $('#board .square-55d63').removeClass('highlight-move');
+            $('#board .square-55d63').removeClass('possible-move');
+        }
+
+        // --- STANDARD LOGIK (DRAG & DROP) ---
+        function onDragStart(source, piece) {
+            if (game.game_over()) return false;
+            if (isOnline) {
+                if (game.turn() !== myColor.charAt(0)) return false;
+                if ((myColor === 'white' && piece.search(/^b/) !== -1) || (myColor === 'black' && piece.search(/^w/) !== -1)) return false;
+            }
+            if (isBot && piece.search(/^b/) !== -1) return false;
+            
+            // Wenn man zieht, löschen wir die Klick-Markierungen
+            selectedSquare = null;
+            removeHighlights();
+        }
+
+        // --- STATUS & GEWINNEN ---
+        function updateStatus() {
+            let status = '';
+            let moveColor = game.turn() === 'b' ? 'Schwarz' : 'Weiß';
+
+            if (game.in_checkmate()) {
+                status = 'MATT! ' + moveColor + ' hat verloren.';
+                handleWin(); // HIER PASSIERT DER GEWINN!
+            } else if (game.in_draw()) {
+                status = 'Unentschieden.';
+            } else {
+                status = moveColor + ' ist am Zug.';
+                if (game.in_check()) status += ' (Schach!)';
+            }
+            $('#status-text').text(status);
+        }
+
+        // --- GEWINN GUTSCHREIBEN ---
+        function handleWin() {
+            // Wer hat gewonnen? Derjenige, der NICHT am Zug ist (denn der andere ist Matt)
+            let winnerColor = game.turn() === 'w' ? 'black' : 'white';
+            
+            // Habe ICH gewonnen?
+            let iAmWinner = false;
+            if (isOnline) {
+                if (myColor === 'white' && winnerColor === 'white') iAmWinner = true;
+                if (myColor === 'black' && winnerColor === 'black') iAmWinner = true;
+            } else if (isBot) {
+                if (winnerColor === 'white') iAmWinner = true;
+            }
+
+            if (iAmWinner) {
+                $('#status-text').addClass('win-animation').text("GEWONNEN! (+1 Sieg)");
+                
+                // Sieg in Datenbank speichern
+                let uid = auth.currentUser.uid;
+                // Wir nutzen transaction, um sicher hochzuzählen
+                db.ref('users/' + uid + '/wins').transaction(currentWins => {
+                    return (currentWins || 0) + 1;
+                });
+            } else {
+                $('#status-text').text("VERLOREN. Viel Glück beim nächsten Mal.");
+            }
+        }
+
+        // --- SPIEL MODI ---
         function startBotGame() {
             $('.screen').removeClass('active'); $('#game-screen').addClass('active');
-            isBot=true; isOnline=false;
+            isBot = true; isOnline = false;
             setTimeout(() => initBoard('bot'), 200);
         }
         function onDropBot(source, target) {
             let move = game.move({ from: source, to: target, promotion: 'q' });
             if (move === null) return 'snapback';
-            
-            triggerEffects(move, source, target);
-            updateAnalysis(move);
-            
-            window.setTimeout(makeRandomMove, 400); // 400ms warten für besseres Gefühl
+            updateStatus();
+            setTimeout(makeRandomMove, 250);
         }
         function makeRandomMove() {
-            let moves = game.moves({ verbose: true });
+            let moves = game.moves();
             if (moves.length === 0) return;
-            let move = moves[Math.floor(Math.random() * moves.length)];
-            game.move(move.san);
+            game.move(moves[Math.floor(Math.random() * moves.length)]);
             board.position(game.fen());
-            triggerEffects(move, move.from, move.to);
-            previousScore = calculateScore(); // Sync Score
+            updateStatus();
         }
 
-        // --- ONLINE ---
         function startOnlineGame(side) {
-            let r = $('#room-id').val();
-            if(!r) return alert("Raumname fehlt!");
+            let r = $('#room-id').val(); if(!r) return alert("Raumname fehlt!");
             currentRoom=r; myColor=side; isOnline=true; isBot=false;
             $('.screen').removeClass('active'); $('#game-screen').addClass('active');
-            
             setTimeout(() => {
                 initBoard('online');
                 if(side==='black') board.orientation('black');
             }, 200);
-
             db.ref('games/'+r).on('value', s => {
                 let d = s.val();
                 if(d && d.fen) {
-                    // Prüfen ob es ein neuer Zug ist für Effekte
-                    if (game.fen() !== d.fen) {
-                        game.load(d.fen);
-                        board.position(d.fen);
-                        // Wir wissen hier nicht genau, was der letzte Zug war, daher kein Highlight/Shake für den Gegner-Zug (einfachheitshalber)
-                        previousScore = calculateScore();
-                    }
+                    game.load(d.fen);
+                    board.position(d.fen);
+                    updateStatus();
                 }
             });
         }
         function onDropOnline(source, target) {
             let move = game.move({ from: source, to: target, promotion: 'q' });
             if (move === null) return 'snapback';
-            
-            triggerEffects(move, source, target);
-            updateAnalysis(move);
+            updateStatus();
             db.ref('games/'+currentRoom).set({ fen: game.fen() });
         }
         function leaveGame() {
             if(isOnline && currentRoom) db.ref('games/'+currentRoom).off();
             $('.screen').removeClass('active'); $('#lobby-screen').addClass('active');
+            // Reset Status Text
+            $('#status-text').removeClass('win-animation').text("");
         }
     </script>
 </body>
